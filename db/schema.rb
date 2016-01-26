@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20160126143456) do
+ActiveRecord::Schema.define(version: 20160131105220) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -34,4 +34,70 @@ ActiveRecord::Schema.define(version: 20160126143456) do
   end
 
   add_foreign_key "clips", "videos"
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute(<<-TRIGGERSQL)
+CREATE OR REPLACE FUNCTION public.clips_after_delete_row_tr()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+                UPDATE videos SET duration = (
+            SELECT sum(clips.duration)
+            FROM clips
+            WHERE clips.video_id = videos.id
+          )
+    
+          WHERE videos.id = OLD.video_id;
+    RETURN NULL;
+END;
+$function$
+  TRIGGERSQL
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute("CREATE TRIGGER clips_after_delete_row_tr AFTER DELETE ON \"clips\" FOR EACH ROW EXECUTE PROCEDURE clips_after_delete_row_tr()")
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute(<<-TRIGGERSQL)
+CREATE OR REPLACE FUNCTION public.clips_after_insert_row_tr()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+                UPDATE videos SET duration = (
+            SELECT sum(clips.duration)
+            FROM clips
+            WHERE clips.video_id = videos.id
+          )
+    
+          WHERE videos.id = NEW.video_id;
+    RETURN NULL;
+END;
+$function$
+  TRIGGERSQL
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute("CREATE TRIGGER clips_after_insert_row_tr AFTER INSERT ON \"clips\" FOR EACH ROW EXECUTE PROCEDURE clips_after_insert_row_tr()")
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute(<<-TRIGGERSQL)
+CREATE OR REPLACE FUNCTION public.clips_after_update_of_duration_row_tr()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+                UPDATE videos SET duration = (
+            SELECT sum(clips.duration)
+            FROM clips
+            WHERE clips.video_id = videos.id
+          )
+    
+          WHERE videos.id = NEW.video_id;
+    RETURN NULL;
+END;
+$function$
+  TRIGGERSQL
+
+  # no candidate create_trigger statement could be found, creating an adapter-specific one
+  execute("CREATE TRIGGER clips_after_update_of_duration_row_tr AFTER UPDATE OF duration ON clips FOR EACH ROW EXECUTE PROCEDURE clips_after_update_of_duration_row_tr()")
+
 end
